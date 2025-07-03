@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Site Under Construction</title>
+  <style>
+    /* Mobile-first base styles */
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 1.5rem;
+      user-select: none;
+    }
+    #message {
+      position: absolute;
+      z-index: 10;
+      padding: 1rem 2rem;
+      background: rgba(0,0,0,0.6);
+      border-radius: 8px;
+      max-width: 90vw;
+      box-shadow: 0 0 10px white;
+    }
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="message">ConnectOmnia<br>Site Under Construction</div>
+  <canvas id="bg"></canvas>
+
+  <script>
+    const canvas = document.getElementById('bg');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    // Resize canvas to fill screen
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Dot class representing each white dot
+    class Dot {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.radius = 2;
+        this.speedX = (Math.random() - 0.5) * 0.5;
+        this.speedY = (Math.random() - 0.5) * 0.5;
+        this.sparkTimer = 0;
+      }
+      move() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x < 0 || this.x > width) this.speedX *= -1;
+        if (this.y < 0 || this.y > height) this.speedY *= -1;
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.fillStyle = 'white';
+        ctx.shadowColor = 'white';
+        ctx.shadowBlur = 5;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Spark class for little messages between dots
+    class Spark {
+      constructor(from, to) {
+        this.from = from;
+        this.to = to;
+        this.progress = 0; // 0 to 1
+        this.speed = 0.02 + Math.random() * 0.02;
+      }
+      update() {
+        this.progress += this.speed;
+        if (this.progress > 1) this.progress = 1;
+      }
+      draw() {
+        const x = this.from.x + (this.to.x - this.from.x) * this.progress;
+        const y = this.from.y + (this.to.y - this.from.y) * this.progress;
+        ctx.beginPath();
+        ctx.fillStyle = 'white';
+        ctx.shadowColor = 'white';
+        ctx.shadowBlur = 10;
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      isDone() {
+        return this.progress >= 1;
+      }
+    }
+
+    // Initialize dots
+    const dotsCount = Math.floor(width / 10);
+    const dots = [];
+    for (let i = 0; i < dotsCount; i++) {
+      dots.push(new Dot());
+    }
+
+    const sparks = [];
+
+    // Animation loop
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Move and draw dots
+      dots.forEach(dot => {
+        dot.move();
+        dot.draw();
+      });
+
+      // Occasionally create sparks between random dots close enough
+      if (Math.random() < 0.05) {
+        const from = dots[Math.floor(Math.random() * dots.length)];
+        // Find a dot within 150px to send spark to
+        const candidates = dots.filter(d => d !== from && Math.hypot(d.x - from.x, d.y - from.y) < 150);
+        if (candidates.length > 0) {
+          const to = candidates[Math.floor(Math.random() * candidates.length)];
+          sparks.push(new Spark(from, to));
+        }
+      }
+
+      // Update and draw sparks
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const spark = sparks[i];
+        spark.update();
+        spark.draw();
+        if (spark.isDone()) sparks.splice(i, 1);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
