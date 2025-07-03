@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Site Under Construction</title>
+  <title>ConnectOmnia</title>
   <style>
     /* Mobile-first base styles */
     html, body {
@@ -47,7 +47,6 @@
     const ctx = canvas.getContext('2d');
     let width, height;
 
-    // Resize canvas to fill screen
     function resize() {
       width = window.innerWidth;
       height = window.innerHeight;
@@ -57,7 +56,6 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // Dot class representing each white dot
     class Dot {
       constructor() {
         this.x = Math.random() * width;
@@ -65,7 +63,6 @@
         this.radius = 2;
         this.speedX = (Math.random() - 0.5) * 0.5;
         this.speedY = (Math.random() - 0.5) * 0.5;
-        this.sparkTimer = 0;
       }
       move() {
         this.x += this.speedX;
@@ -84,35 +81,53 @@
       }
     }
 
-    // Spark class for little messages between dots
     class Spark {
       constructor(from, to) {
         this.from = from;
         this.to = to;
-        this.progress = 0; // 0 to 1
+        this.progress = 0;
         this.speed = 0.02 + Math.random() * 0.02;
+        this.positions = []; // For trace
       }
       update() {
         this.progress += this.speed;
         if (this.progress > 1) this.progress = 1;
-      }
-      draw() {
+
+        // Save current position for trace
         const x = this.from.x + (this.to.x - this.from.x) * this.progress;
         const y = this.from.y + (this.to.y - this.from.y) * this.progress;
-        ctx.beginPath();
-        ctx.fillStyle = 'white';
-        ctx.shadowColor = 'white';
-        ctx.shadowBlur = 10;
-        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        this.positions.push({x, y});
+        if (this.positions.length > 10) this.positions.shift();
+      }
+      draw() {
+        // Draw trace (fading yellow dots)
+        for (let i = 0; i < this.positions.length; i++) {
+          const pos = this.positions[i];
+          const alpha = (i + 1) / this.positions.length * 0.6;
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255, 255, 100, ${alpha})`;
+          ctx.shadowColor = `rgba(255, 255, 100, ${alpha})`;
+          ctx.shadowBlur = 10 * alpha;
+          ctx.arc(pos.x, pos.y, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Draw current spark bright
+        const current = this.positions[this.positions.length - 1];
+        if (current) {
+          ctx.beginPath();
+          ctx.fillStyle = 'yellow';
+          ctx.shadowColor = 'yellow';
+          ctx.shadowBlur = 15;
+          ctx.arc(current.x, current.y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
       }
       isDone() {
-        return this.progress >= 1;
+        return this.progress >= 1 && this.positions.length === 0;
       }
     }
 
-    // Initialize dots
     const dotsCount = Math.floor(width / 10);
     const dots = [];
     for (let i = 0; i < dotsCount; i++) {
@@ -121,20 +136,18 @@
 
     const sparks = [];
 
-    // Animation loop
     function animate() {
-      ctx.clearRect(0, 0, width, height);
+      // Instead of clearRect, fill with semi-transparent black for trace effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.fillRect(0, 0, width, height);
 
-      // Move and draw dots
       dots.forEach(dot => {
         dot.move();
         dot.draw();
       });
 
-      // Occasionally create sparks between random dots close enough
       if (Math.random() < 0.05) {
         const from = dots[Math.floor(Math.random() * dots.length)];
-        // Find a dot within 150px to send spark to
         const candidates = dots.filter(d => d !== from && Math.hypot(d.x - from.x, d.y - from.y) < 150);
         if (candidates.length > 0) {
           const to = candidates[Math.floor(Math.random() * candidates.length)];
@@ -142,12 +155,14 @@
         }
       }
 
-      // Update and draw sparks
       for (let i = sparks.length - 1; i >= 0; i--) {
         const spark = sparks[i];
         spark.update();
         spark.draw();
-        if (spark.isDone()) sparks.splice(i, 1);
+        // Remove spark if finished and trace fully faded
+        if (spark.progress >= 1 && spark.positions.length >= 10) {
+          sparks.splice(i, 1);
+        }
       }
 
       requestAnimationFrame(animate);
